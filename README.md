@@ -38,7 +38,7 @@ OnlineChatbot/
 ## 🚀 Setup Instructions
 
 ### 1. Clone & Install Requirements
-
+- Ensure python > 3.11 for this project.
 ```bash
 git clone https://github.com/vDoIT-Technologies/online-nlp-chatbot-backend.git 
 cd ONLINECHATBOT
