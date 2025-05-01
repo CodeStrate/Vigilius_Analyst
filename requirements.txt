@@ -11,3 +11,5 @@ prisma
 pyYAML
 uvicorn
 pydantic[email]
+loguru
+ngrok
