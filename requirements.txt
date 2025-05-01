@@ -1,0 +1,13 @@
+streamlit
+openai
+sqlalchemy
+pandas
+numpy
+streamlit-mic-recorder
+python-dotenv
+pydantic
+fastapi
+prisma
+pyYAML
+uvicorn
+pydantic[email]
