@@ -23,4 +23,4 @@ async def sign_up_user(payload: UserLoginModel, db: Prisma = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     
-    return {"message": "User logged in successfully", "currently_logged_in_as": logged_in_user}
+    return {"message": "User logged in successfully", "currently_logged_in_as": {"name" : logged_in_user.name, "email" : logged_in_user.email}}

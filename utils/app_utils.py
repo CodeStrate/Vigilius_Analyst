@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine, inspect, text
 import pandas as pd
-import re, time, random, math
+import re, time, random, math, os
 import tempfile
 import streamlit as st
 from utils.utils import get_dataframe, get_timestamp
@@ -75,6 +75,8 @@ def handle_dataset_upload(uploaded_dataset):
             dataset = get_dataframe(uploaded_dataset)
             table_name = "uploaded_dataset"
             db_path = "./datasets/uploaded_dataset.db"
+
+            os.makedirs(os.path.dirname(db_path), exist_ok=True)
 
             save_dataframe_to_sqlite(dataset, table_name, db_path)
             schema = get_table_schema_sqlalchemy(db_path, table_name)
