@@ -1,6 +1,7 @@
 from handlers.chat_handler import OpenAIChatHandler
 from fastapi import APIRouter, status, HTTPException
 from fastapi.responses import JSONResponse
+from backend.models.chatModel import ChatModel
 
 router = APIRouter()
 handler = OpenAIChatHandler()
@@ -15,24 +16,22 @@ async def chat_help():
     Hello I am QueryLlama, your AI assistant. I can help you with data analysis.
     You can ask me questions about data analysis and SQL coding, and I will provide you information and code snippets to help you out.'''})
 
-@router.post("/chat", response_model=str, status_code=status.HTTP_200_OK)
-async def start_chat(prompt: str):
-    if not prompt:
-        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"message": "A Prompt is required."})
+@router.post("/chat", status_code=status.HTTP_200_OK)
+async def start_chat(payload: ChatModel):
     client = handler.client
     try:
-        response = await client.chat.completions.create(
+        response = client.chat.completions.create(
             model=handler.model_preference,
             messages=[
-                {"role": "system", "content": '''You are a helpful assistant that analyzes datasets. Currently answer any questions related to data analysis and how to query SQL by giving out code snippets.
-                 You are not allowed to answer any other questions. If you are not sure about the answer, say "I don't know".'''},
-                {"role": "user", "content": prompt}
+                {"role": "system", "content": '''You are a helpful assistant that helps users with data analysis and teach SQL coding. You provide information and code snippets to help them out.
+                 In case user asks something that is not related to data analysis or SQL coding, you will politely decline to answer.'''},
+                {"role": "user", "content": payload.prompt}
             ],
             temperature=0.3,
             stream=False
         )
         ai_reply = response.choices[0].message.content
-        return ai_reply.strip()
+        return JSONResponse(status_code=status.HTTP_200_OK, content={"ai_response": ai_reply.strip()})
 
     except HTTPException as http_ex:
         print(f"HTTP Exception: {http_ex}")
