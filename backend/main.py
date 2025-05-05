@@ -7,7 +7,8 @@ from contextlib import asynccontextmanager
 from backend.routes import (
     sign_up_route,
     log_in_route,
-    health
+    health,
+    chat_route
 )
 from dotenv import load_dotenv
 load_dotenv()
@@ -48,6 +49,7 @@ app.add_middleware(
 app.include_router(sign_up_route.router, prefix="/api/v1", tags=["User Sign Up"])
 app.include_router(log_in_route.router, prefix="/api/v1", tags=["User Log In"])
 app.include_router(health.router, prefix="/api/v1", tags=["Health Check"])
+app.include_router(chat_route.router, prefix="/api/v1", tags=["Chatbot"])
 
 @app.get("/")
 async def root():
