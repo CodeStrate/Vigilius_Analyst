@@ -1,4 +1,5 @@
-from sqlalchemy import create_engine, inspect, text
+from langchain_community.utilities import SQLDatabase
+from sqlalchemy import inspect, create_engine
 import pandas as pd
 import re, time, random, math, os
 import tempfile
@@ -16,44 +17,9 @@ def clear_cache():
     st.cache_resource.clear()
     st.session_state.clear()
 
-def extract_sql_code(response):
-    """Extract SQL code from AI response if present."""
-    code_blocks = re.findall(r"```sql(.*?)```", response, re.DOTALL)
-    if code_blocks:
-        return code_blocks[0].strip()
-    if response.strip().lower().startswith(("select", "with")):
-        return response.strip()
-    return None
-
-def transcribe_audio_recording(voice_recording):
-    if isinstance(voice_recording, dict) and "bytes" in voice_recording:
-        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_audio_file:
-            temp_audio_file.write(voice_recording["bytes"])
-            wav_file_path = temp_audio_file.name
-        transcribed_text = st.session_state.stt_handler.transcribe_audio(wav_file_path)
-        return transcribed_text if transcribed_text else "Transcription failed."
-    return None
-
-def execute_sql_query(query: str, db_path: str):
-    """Execute SQL query on the SQLite database."""
-    engine = create_engine(f"sqlite:///{db_path}")
-    try:
-        with engine.connect() as connection:
-            result = connection.execute(text(query))
-            rows = result.fetchall()
-
-            if not rows:
-                return None
-
-            columns = result.keys()
-
-            if len(rows) == 1 and len(rows[0]) == 1:
-                return rows[0][0]
-
-            return pd.DataFrame(rows, columns=columns)
-    except Exception as e:
-        st.error(f"Error executing query: {e}")
-        return None
+def get_chinook_db_and_dialect(db_path: str = "Chinook.db"):
+    db = SQLDatabase.from_uri(f"sqlite:///{db_path}")
+    return db, db.dialect
 
 def save_dataframe_to_sqlite(df, table_name, db_path):
     """Save DataFrame to SQLite."""
@@ -151,3 +117,11 @@ def auto_generate_chart(df: pd.DataFrame):
     except Exception as e:
         st.error(f"Chart generation failed: {e}")
         st.exception(e)
+# def transcribe_audio_recording(voice_recording):
+#     if isinstance(voice_recording, dict) and "bytes" in voice_recording:
+#         with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_audio_file:
+#             temp_audio_file.write(voice_recording["bytes"])
+#             wav_file_path = temp_audio_file.name
+#         transcribed_text = st.session_state.stt_handler.transcribe_audio(wav_file_path)
+#         return transcribed_text if transcribed_text else "Transcription failed."
+#     return None
