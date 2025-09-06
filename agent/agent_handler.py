@@ -1,20 +1,16 @@
 from enum import Enum
 from langchain_core.messages import AIMessage
-from typing import List
+from typing import List, Literal
 from langgraph.graph import END, START, MessagesState, StateGraph
 from langgraph.prebuilt import ToolNode
+from agent.data_assistant_handler import respond, validate_intent
 
 from uuid import uuid4
 from langchain_community.agent_toolkits import SQLDatabaseToolkit
 from langchain_openai import ChatOpenAI
-from utils.app_utils import get_chinook_db_and_dialect
+from utils.misc_utils import get_chinook_db_and_dialect
+from utils.misc_utils import get_last_user_message
 from agent.prompts import GENERATE_SQL_QUERY_PROMPT, CHECK_SQL_QUERY_PROMPT
-from dotenv import load_dotenv
-load_dotenv()
-
-class ShouldContinue(str, Enum):
-    END = END
-    CHECK_QUERY = "check_query"
 
 llm = ChatOpenAI(
     model="gpt-4o"
@@ -106,8 +102,39 @@ def get_schema_and_query_tool_nodes() -> List[ToolNode]:
     run_query_node = ToolNode([run_query_tool], name="run_query")
     return [get_schema_node, run_query_node]
 
-# def small_talk_condition():
+def intent_classify(state: MessagesState):
+    user_message = get_last_user_message(state["messages"])
+    raw_intent = respond(user_message, do_intent=True)
+    intent_validation = validate_intent(raw_intent)
 
+    intent_message = AIMessage(content=f'Intent classified as {intent_validation}')
+    return {"messages" : [intent_message]}
+
+def handle_small_talk(state: MessagesState):
+    user_message = get_last_user_message(state["messages"])
+    intent = "small_talk"
+    
+    # find intent
+    for msg in reversed(state["messages"]):
+        if hasattr(msg, 'content')and msg.content.startswith("Intent classified as:"):
+            intent = msg.content.split(": ")[1]
+            break
+    
+    response_content = respond(user_message, current_intent=intent or "small_talk", do_intent=False)
+    response = AIMessage(content=response_content)
+    
+    return {"messages": [response]}
+
+# conditional for route talks vs sql agent
+def route_after_intent(state: MessagesState) -> Literal["list_sql_tables", "handle_small_talk"]:
+    last_message = state["messages"][-1]
+
+    if "sql_query" in last_message.content:
+        return "list_sql_tables"
+    elif "small_talk" in last_message.content:
+        return "handle_small_talk"
+    else:
+        return "handle_small_talk"
 
 # conditional in graph
 def should_continue(state:MessagesState) -> str | None:
@@ -124,6 +151,10 @@ def build_agent():
     tool_nodes = get_schema_and_query_tool_nodes()
     builder = StateGraph(MessagesState)
 
+    # add nodes for intent and small talk
+    builder.add_node(intent_classify)
+    builder.add_node(handle_small_talk)
+
     # add nodes
     builder.add_node(list_sql_tables)
     builder.add_node(call_get_schema)
@@ -133,7 +164,16 @@ def build_agent():
     builder.add_node(tool_nodes[1], "run_query")
 
     # add edges
-    builder.add_edge(START, "list_sql_tables")
+    builder.add_edge(START, "intent_classify")
+
+    builder.add_conditional_edges(
+        "intent_classify",
+        route_after_intent,
+    )
+
+    # end small talk
+    builder.add_edge("handle_small_talk", END)
+
     builder.add_edge("list_sql_tables", "call_get_schema")
     builder.add_edge("call_get_schema", "get_schema")
     builder.add_edge("get_schema", "generate_query")

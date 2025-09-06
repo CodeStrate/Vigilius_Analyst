@@ -1,3 +1,4 @@
 chat_sessions_database_path: "./chat_sessions/chat_sessions.db"
 uploaded_dataset_path: "./datasets/uploaded_dataset.db"
 table_name: "uploaded_dataset"
+ollama_model: "nemotron-mini:latest" # add your ollama model here!

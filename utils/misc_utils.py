@@ -1,23 +1,33 @@
-import os, yaml
-import requests
+import yaml
 import streamlit as st
 import pandas as pd
+from typing import List
 from dotenv import load_dotenv
+from langchain_community.utilities import SQLDatabase
 load_dotenv()
 
 def load_config():
     with open("config.yaml", "r") as f:
         return yaml.safe_load(f)
 
-def list_openai_models():
-    openai_api_key = os.getenv("OPENAI_API_KEY")
-    response = requests.get("https://api.openai.com/v1/models", headers={"Authorization": f"Bearer {openai_api_key}"}).json()
-    if response.get("error", False):
-        st.warning("Openai Error: " + response["error"]["message"])
-        return []
-    else:
-        return [item["id"] for item in response["data"]]
-    
+
+def get_last_user_message(messages: List) -> str:
+    for msg in reversed(messages):
+        # Langchain format
+        if hasattr(msg, 'type') and msg.type == 'human':
+            return msg.content
+        elif isinstance(msg, dict) and msg.get('role') == 'user':
+            return msg.get('content', '')
+        elif hasattr(msg, 'role') and getattr(msg, 'role') == 'user':
+            return msg.get('content', '')
+        
+    # fallback
+    return "Hello"
+
+def get_chinook_db_and_dialect(db_path: str = "Chinook.db"):
+    db = SQLDatabase.from_uri(f"sqlite:///{db_path}")
+    return db, db.dialect
+
 def get_avatar(sender_type):
     if sender_type == "user":
         return "assets/chat_icons/user_image.png"

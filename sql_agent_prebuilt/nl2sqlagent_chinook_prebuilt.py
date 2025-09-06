@@ -1,8 +1,8 @@
 from langchain_community.agent_toolkits import SQLDatabaseToolkit
 from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
-from utils.app_utils import get_chinook_db_and_dialect
-from prompts import SQL_SYSTEM_PROMPT
+from utils.misc_utils import get_chinook_db_and_dialect
+from agent.prompts import SQL_SYSTEM_PROMPT
 
 llm = ChatOpenAI(
     model="gpt-4o"

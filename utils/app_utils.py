@@ -1,10 +1,9 @@
-from langchain_community.utilities import SQLDatabase
-from sqlalchemy import inspect, create_engine
+from sqlalchemy import create_engine
 import pandas as pd
-import re, time, random, math, os
+import time, os
 import tempfile
 import streamlit as st
-from utils.utils import get_dataframe, get_timestamp
+from utils.misc_utils import get_dataframe, get_timestamp
 import plotly.express as px
 
 # --- Utility Functions ---
@@ -17,22 +16,11 @@ def clear_cache():
     st.cache_resource.clear()
     st.session_state.clear()
 
-def get_chinook_db_and_dialect(db_path: str = "Chinook.db"):
-    db = SQLDatabase.from_uri(f"sqlite:///{db_path}")
-    return db, db.dialect
 
 def save_dataframe_to_sqlite(df, table_name, db_path):
     """Save DataFrame to SQLite."""
     engine = create_engine(f"sqlite:///{db_path}")
     df.to_sql(table_name, engine, if_exists='replace', index=False)
-
-def get_table_schema_sqlalchemy(db_path, table_name):
-    """Get table schema using SQLAlchemy Inspector."""
-    engine = create_engine(f"sqlite:///{db_path}")
-    inspector = inspect(engine)
-    columns = inspector.get_columns(table_name)
-    schema = "\n".join([f"{col['name']} ({col['type']})" for col in columns])
-    return schema
 
 def handle_dataset_upload(uploaded_dataset):
     if uploaded_dataset is not None and not st.session_state.dataset_uploaded:
@@ -45,26 +33,7 @@ def handle_dataset_upload(uploaded_dataset):
             os.makedirs(os.path.dirname(db_path), exist_ok=True)
 
             save_dataframe_to_sqlite(dataset, table_name, db_path)
-            schema = get_table_schema_sqlalchemy(db_path, table_name)
-
-            data_summary = st.session_state.chat_handler.data_summarizer(
-                dataset=dataset,
-                schema=schema
-            )
-
-            preview_dataset = dataset.copy().sample(math.floor(random.uniform(2, 3)))
-
-            recommended_queries = st.session_state.chat_handler.get_recommended_queries(
-                dataset=dataset,
-                schema=schema
-            )
-
-        assistant_response = [data_summary, preview_dataset, recommended_queries]
-        st.session_state.dataset_uploaded = True
-        st.session_state.chat_history.append({"sender_type": "assistant", "message_type": "list", "content": assistant_response})
-        st.session_state.query_results.append({"sender_type": "assistant", "message_type": "text", "content": data_summary})
-        st.session_state.query_results.append({"sender_type": "assistant", "message_type": "text", "content": recommended_queries})
-
+            
 def auto_generate_chart(df: pd.DataFrame):
     """Auto-generate a bar chart based on DataFrame structure."""
     try:
