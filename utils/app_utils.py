@@ -20,14 +20,22 @@ def clear_cache():
 def handle_dataset_upload(uploaded_dataset):
     if uploaded_dataset is not None and not st.session_state.dataset_uploaded:
         with st.spinner("Processing your dataset..."):
-            time.sleep(1)  # Simulate processing time
             dataset = get_dataframe(uploaded_dataset)
-            table_name = "uploaded_dataset"
-            db_path = "./datasets/uploaded_dataset.db"
+            
+            # Format table name: remove extension, replace spaces with underscores, lowercase
+            file_name = uploaded_dataset.name
+            table_name = os.path.splitext(file_name)[0].replace(" ", "_").lower()
+            db_path = f"./datasets/{table_name}.db"
 
             os.makedirs(os.path.dirname(db_path), exist_ok=True)
 
             save_dataframe_to_sqlite(dataset, table_name, db_path)
+            
+            st.session_state.dataset_uploaded = True
+            st.success("Dataset uploaded and processed successfully!")
+            return db_path
+    
+    return None
 
 def save_dataframe_to_sqlite(df, table_name, db_path):
     """Save DataFrame to SQLite."""
