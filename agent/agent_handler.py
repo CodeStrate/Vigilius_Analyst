@@ -6,18 +6,20 @@ from agent.data_assistant_handler import respond, validate_intent
 
 from uuid import uuid4
 from langchain_community.agent_toolkits import SQLDatabaseToolkit
+from langchain_community.utilities import SQLDatabase
 from langchain_openai import ChatOpenAI
 from utils.app_utils import get_db_and_dialect
 # from utils.misc_utils import get_chinook_db_and_dialect
 from utils.misc_utils import get_last_user_message
 from agent.prompts import GENERATE_SQL_QUERY_PROMPT, CHECK_SQL_QUERY_PROMPT
 
-class SQLAgent:
+class SQLAgentHandler:
 
-    def __init__(self, db_path, model_name: str = "gpt-4o", temperature: float = 0.5, top_k: int = 5):
+    def __init__(self, db: SQLDatabase, dialect: str = "sqlite", model_name: str = "gpt-4o", temperature: float = 0.5, top_k: int = 10):
         self.llm = ChatOpenAI(model=model_name, temperature=temperature)
         self.top_k = top_k
-        self.db, self.dialect = get_db_and_dialect(db_path=db_path)
+        self.db = db
+        self.dialect = dialect
         
         # this has all the tools we need prebuilt
         self.toolkit = SQLDatabaseToolkit(db=self.db, llm=self.llm)
@@ -162,21 +164,26 @@ class SQLAgent:
             return "run_query"
         else:
             return "check_query"
-        
+
+class SQLAgent:
+    def __init__(self, db_path: str):
+        self.db, self.dialect = get_db_and_dialect(db_path=db_path)
+        self.handler = SQLAgentHandler(db=self.db, dialect=self.dialect)
+
     def build_agent(self):
-        tool_nodes = self.get_schema_and_query_tool_nodes()
+        tool_nodes = self.handler.get_schema_and_query_tool_nodes()
         builder = StateGraph(MessagesState)
 
         # add nodes for intent and small talk
-        builder.add_node(self.intent_classify)
-        builder.add_node(self.handle_small_talk)
+        builder.add_node(self.handler.intent_classify)
+        builder.add_node(self.handler.handle_small_talk)
 
         # add nodes
-        builder.add_node(self.list_sql_tables)
-        builder.add_node(self.call_get_schema)
+        builder.add_node(self.handler.list_sql_tables)
+        builder.add_node(self.handler.call_get_schema)
         builder.add_node(tool_nodes[0], "get_schema")
-        builder.add_node(self.generate_query)
-        builder.add_node(self.check_query)
+        builder.add_node(self.handler.generate_query)
+        builder.add_node(self.handler.check_query)
         builder.add_node(tool_nodes[1], "run_query")
 
         # add edges
@@ -184,7 +191,7 @@ class SQLAgent:
 
         builder.add_conditional_edges(
             "intent_classify",
-            self.route_after_intent,
+            self.handler.route_after_intent,
         )
 
         # end small talk
@@ -197,7 +204,7 @@ class SQLAgent:
         # add conditional edge
         builder.add_conditional_edges(
             "generate_query",
-            self.should_continue_query,
+            self.handler.should_continue_query,
             {
                 "run_query" : "run_query",
                 "check_query" : "check_query",
@@ -212,8 +219,8 @@ class SQLAgent:
 
         return agent
 
-    def save_agent_graph(self, agent, save_path="agent_graph.png"):
-        graph_image_rawbytes = agent.get_graph().draw_mermaid_png()
+    def save_agent_graph(self, save_path="agent_graph.png"):
+        graph_image_rawbytes = self.agent.get_graph().draw_mermaid_png()
 
         with open(save_path, "wb") as f:
             f.write(graph_image_rawbytes)
