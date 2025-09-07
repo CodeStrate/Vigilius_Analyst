@@ -1,129 +1,207 @@
-# 🧠 OnlineChatBot
+# 📊 Vigilius Analyst
 
-An end-to-end chatbot web application built with **FastAPI**, **Prisma for Python**, and **Streamlit**. The backend supports user authentication, chat management, speech-to-text processing, and integrates ngrok for secure local development exposure.
+[![Python 3.12.9+](https://img.shields.io/badge/python-≥3.12.9-blue.svg)](https://www.python.org/downloads/release/python-3129/)  
+[![Conda](https://img.shields.io/badge/conda-ready-green.svg)](https://docs.conda.io/en/latest/)
+
+An intelligent **data analysis assistant** built with **Streamlit** and **LangGraph**/**Langchain**.  
+Vigilius lets you query datasets in **natural language**, automatically generating SQL, visualizations, and insights — all powered by multiple AI providers.
+
+---
+
+## 🚀 Key Features
+
+- 🔗 **Multi-Provider AI Support**: OpenAI, Groq, Gemini, and Ollama  
+- 🧠 **Smart SQL Agent**: Generates, validates, and executes SQL from natural language  
+- 💬 **Data Assistant**: Handles small talk & intent classification  
+- 📂 **Multiple File Formats**: CSV, Excel, and SQLite database support  
+- ⚡ **Streaming Responses**: Real-time answers with clean formatting  
+- 💾 **Session Management**: Persistent chat history (Graph CheckPointer) & model configs
 
 ---
 
 ## 📁 Project Structure
 
+Based on the [`sql-agent`](https://github.com/CodeStrate/Vigilius_Analyst/tree/sql-agent) branch:  
+
 ```
-OnlineChatbot/
-├── assets/                  # Static assets for UI (e.g., bot/user icons)
-├── backend/
-│   ├── models/              # Pydantic models for API
-│   ├── routes/              # FastAPI route handlers
-│   └── main.py              # Backend entrypoint with ngrok tunnel and lifespan management
-├── datasets/
-│   └── uploaded_dataset.db  # Local SQLite DB (used to store data temporarily to query using Streamlit UI)
-├── handlers/
-│   ├── chat_handler.py      # Main chat logic
-│   ├── chat_history_handler.py # Chat history management
-│   └── stt_handler.py       # Speech-to-text handling
-├── prisma/
-│   ├── migrations/          # Prisma migration files
-│   └── schema.prisma        # Prisma schema (Python-compatible)
+Vigilius_Analyst/
+├── agent/
+│   ├── agent_handler.py         # Core SQL agent logic
+│   ├── data_assistant_handler.py # Intent classification + small talk
+│   ├── llm_factory.py           # Multi-provider LLM factory
+│   └── prompts.py               # Agent system prompts
+│
+├── assets/
+│   └── chat_icons/              # User & bot avatars
+│
+├── backend/                     # FastAPI backend (future scope)
+│
+├── datasets/                    # Uploaded and processed datasets
+│
+├── debug/
+│   └── check_agent.py           # CLI testing tool for agents
+│
+├── prebuilt/
+│   └── react_sql_agent.py       # LangGraph ReAct SQL agent template
+│
 ├── utils/
-│   ├── app_utils.py         # Util Functions used by `app.py`
-│   ├── db_dependency.py     # FastAPI DB dependency injection
-│   └── utils.py             # General utilities
-├── app.py                   # Streamlit frontend
-├── config.yaml              # Configuration YAML for SQLite
-├── .env                     # Environment variables
-├── requirements.txt         # Python dependencies
+│   ├── ai_providers.py          # Provider configs + available models
+│   ├── app_utils.py             # Streamlit utilities
+│   └── misc_utils.py            # General helper functions
+│
+├── .env                         # env file for API Keys (More in future)
+├── agent_graph.png              # Mermaid Image for Agent Graph Architecture
+├── app.py                       # Streamlit frontend entrypoint
+├── requirements.txt             # Python dependencies
 └── README.md
 ```
 
 ---
 
-## 🚀 Setup Instructions
+## ⚙️ Setup Instructions
 
-### 1. Clone & Install Requirements
-- Ensure python > 3.11 for this project.
+### Requirements
+- **Python** ≥ 3.12.9  
+- Works on macOS, Linux, Windows  
+
+### Option 1: Virtualenv
 ```bash
-git clone https://github.com/vDoIT-Technologies/online-nlp-chatbot-backend.git 
-cd ONLINECHATBOT
+git clone https://github.com/CodeStrate/Vigilius_Analyst.git
+cd Vigilius_Analyst
 python -m venv venv
-source venv/bin/activate  # Or `venv\Scripts\activate` on Windows
+source venv/bin/activate   # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 2. Configure `.env`
+### Option 2: Conda
+```bash
+git clone https://github.com/CodeStrate/Vigilius_Analyst.git
+cd Vigilius_Analyst
+conda create -n vigilius python=3.12.9
+conda activate vigilius
+pip install -r requirements.txt
+```
 
-Set the following variables in your `.env` file:
+### Configure Environment
+Create a `.env` file with your keys:
 
 ```ini
-DATABASE_URL="mysql://<user>:<password>@localhost:3306/chatdb"
-NGROK_AUTH_TOKEN=your_token_here
-BACKEND_PORT=8000
+# AI Provider Keys
+OPENAI_API_KEY=your_openai_key
+GROQ_API_KEY=your_groq_key
+GEMINI_API_KEY=your_gemini_key
+
+# Ollama requires no API key (runs locally)
+# Install from: https://ollama.com/download
 ```
 
----
-
-## 🗄️ Database Setup (MySQL)
-
-### Create a user with limited privileges:
-
-```sql
-CREATE USER 'prisma'@'localhost' IDENTIFIED BY 'yourpassword';
-GRANT CREATE, SELECT, INSERT, UPDATE, DELETE ON *.* TO 'prisma'@'localhost';
-```
-
-Then:
-
-1. Generate Prisma Client
-
+### (Optional) Install Ollama Models
 ```bash
-prisma generate
+ollama pull llama3:8b
 ```
 
-2. Deploy migrations or push migrations to DB
+---
 
+## ▶️ Running Vigilius
+
+**Web App (Streamlit)**
 ```bash
-prisma db push
+streamlit run app.py
 ```
 
-> Make sure `prisma.schema` has valid models and the `DATABASE_URL` is set in `.env`.
-
----
-
-## 🔌 Running the Backend with ngrok (in project root)
-
+**Terminal Debugging**
 ```bash
-uvicorn backend.main:app --port 8000 --reload
+python -m debug.check_agent
 ```
 
-✅ Starts FastAPI on `localhost:8000`  
-🌐 ngrok tunnel is created and displayed in logs
+---
+
+## 🎯 Usage Guide
+
+1. **Upload Your Dataset**  
+   - Supported: CSV, Excel (.xlsx), SQLite (.db)  
+   - Files are converted to SQLite + schema analyzed  
+
+2. **Select Models**  
+   - Choose AI providers + models for SQL Agent & Data Assistant  
+   - Confirm selection to initialize  
+
+3. **Chat with Your Data**  
+   - Example queries:  
+     - “Top 10 customers by sales”  
+     - “Revenue trends by month”  
+     - “Most popular products”  
+
+4. **Get Results**  
+   - Auto-generated SQL → executed on database  
+   - Outputs as tables (whenever available, pandas WIP)
+   - Streaming responses with formatting  
 
 ---
 
-## 🔐 Authentication
+## 🧩 AI Agent Architecture
 
-- `POST /api/v1/signup`: Register a user
+### SQL Agent
+- Schema discovery  
+- Query generation + validation  
+- Results formatting  
 
-- `POST /api/v1/login`: Login with email & password
-  - Returns `401 Unauthorized` on wrong credentials
-  - Ensures email uniqueness (both at DB + API level)
-  - Passwords must be **8+ characters, alphanumeric**
+### Data Assistant
+- Handles non-data queries  
+- Classifies and validates intent (SQL vs. small talk)  
+- Maintains conversation flow  
 
----
-
-## 🧠 Chat Features
-
-- Speech-to-Text (via `handlers/stt_handler.py`)
-- Persistent chat history
-- Clean UI with avatars via `assets/chat_icons`
-
----
-
-## 🧪 API Docs
-
-Visit [http://localhost:8000/docs](http://localhost:8000/docs) (or your ngrok URL) for interactive Swagger UI.
+### LLM Factory
+- Unified interface for all providers  
+- Dynamic model switching  
+- Provider-specific optimizations  
 
 ---
 
-## 🛠️ Dev Notes
+## 🔧 Configuration
 
-- `orm_mode` in Pydantic models has been replaced by `ConfigDict`.
-- Prisma for Python currently lacks some features like shadow DB. Use `db push` and manual migrations.
-- Routes expect valid JSON; missing payloads result in `422`.
+| Provider  | Models | Best For |
+|-----------|--------|----------|
+| **OpenAI** | GPT-4, GPT-3.5 | High accuracy, complex queries |
+| **Groq**   | Llama-3, Mixtral | Ultra-fast inference |
+| **Gemini** | Gemini-Pro | Google’s latest models |
+| **Ollama** | Llama3, Mistral, CodeLlama | Local, private, free |
+
+- Edit prompts → `agent/prompts.py`  
+- Adjust model configs → `agent/llm_factory.py`  
+- UI tweaks → `app.py`  
+
+---
+
+## 🧪 Testing
+
+**CLI Debugging**
+```bash
+python -m debug.check_agent
+```
+
+---
+
+## 🛠️ Future Roadmap
+
+- ✅ FastAPI backend (multi-user, sessions, API access)  
+- ✅ Persistent chat history  
+- ✅ Export results (CSV, Excel, PDF)  
+- ✅ Advanced visualizations + customization  
+- ✅ Scheduled reports + notifications  
+
+---
+
+## 🤝 Contributing
+
+1. Fork this repo  
+2. Create a branch (`git checkout -b feature/your-feature`)  
+3. Commit (`git commit -m "Add your feature"`)  
+4. Push (`git push origin feature/your-feature`)  
+5. Open a Pull Request  
+
+---
+
+## 📞 Support
+
+For help or feature requests, please [open an issue](../../issues).  
