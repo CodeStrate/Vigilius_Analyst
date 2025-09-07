@@ -1,39 +1,54 @@
 from sqlalchemy import create_engine
 import pandas as pd
-import time, os
+import os
 import tempfile
 from langchain_community.utilities import SQLDatabase
 import streamlit as st
-from utils.misc_utils import get_dataframe, get_timestamp
+from utils.misc_utils import get_dataframe
 import plotly.express as px
 
 # --- Utility Functions ---
-def get_session_key():
-    if "session_key" not in st.session_state or st.session_state.session_key == "new_session":
-        st.session_state.session_key = get_timestamp()
-    return st.session_state.session_key
-
 def clear_cache():
     st.cache_resource.clear()
     st.session_state.clear()
 
+
 def handle_dataset_upload(uploaded_dataset):
     if uploaded_dataset is not None and not st.session_state.dataset_uploaded:
         with st.spinner("Processing your dataset..."):
-            dataset = get_dataframe(uploaded_dataset)
-            
-            # Format table name: remove extension, replace spaces with underscores, lowercase
+
             file_name = uploaded_dataset.name
-            table_name = os.path.splitext(file_name)[0].replace(" ", "_").lower()
-            db_path = f"./datasets/{table_name}.db"
-
-            os.makedirs(os.path.dirname(db_path), exist_ok=True)
-
-            save_dataframe_to_sqlite(dataset, table_name, db_path)
+            file_extension = os.path.splitext(file_name)[1].lower()
             
-            st.session_state.dataset_uploaded = True
-            st.success("Dataset uploaded and processed successfully!")
-            return db_path
+            if file_extension == '.db':
+                # Handle .db files
+                db_name = os.path.splitext(file_name)[0].replace(" ", "_").lower()
+                db_path = f"./datasets/{db_name}.db"
+                
+                # Create datasets directory if it doesn't exist
+                os.makedirs(os.path.dirname(db_path), exist_ok=True)
+                
+                # Save the uploaded DB file
+                with open(db_path, "wb") as f:
+                    f.write(uploaded_dataset.getbuffer())
+                    
+                st.success(f"SQLite database uploaded successfully!")
+                return db_path
+                
+            else:
+                # Handle CSV/Excel files
+                dataset = get_dataframe(uploaded_dataset)
+                
+                # Format table name: remove extension, replace spaces with underscores, lowercase
+                table_name = os.path.splitext(file_name)[0].replace(" ", "_").lower()
+                db_path = f"./datasets/{table_name}.db"
+
+                os.makedirs(os.path.dirname(db_path), exist_ok=True)
+
+                save_dataframe_to_sqlite(dataset, table_name, db_path)
+                
+                st.success("Dataset uploaded and processed successfully!")
+                return db_path
     
     return None
 
@@ -45,7 +60,6 @@ def save_dataframe_to_sqlite(df, table_name, db_path):
 def get_db_and_dialect(db_path) -> tuple[SQLDatabase, str]:
     db = SQLDatabase.from_uri(f"sqlite:///{db_path}")
     return db, db.dialect
-
             
 def auto_generate_chart(df: pd.DataFrame):
     """Auto-generate a bar chart based on DataFrame structure."""

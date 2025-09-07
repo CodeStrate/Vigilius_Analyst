@@ -55,12 +55,38 @@ You will call the appropriate tool to execute the query after running this check
 """
 
 INTENT_CLASSIFIER_PROMPT="""
-You are an intent classifier. 
-Decide if the user's message is asking for a SQL query, is general small talk, or needs clarification. 
-Respond with only one label from this list:
-- sql_query → if the user is asking about data, tables, schema, or anything that requires an SQL query. 
-- small_talk → if the user is greeting, thanking, or asking about your abilities. 
-- clarification_needed → if the request is ambiguous and lacks enough detail to generate SQL safely.
+You are an intent classifier for a data analysis assistant.
+
+Your job is to read the user's last message and classify it into exactly one of three categories:
+
+1. sql_query  
+   - The user is asking about data, tables, schema, or anything that requires writing or running an SQL query.  
+   - Examples:  
+     - "Show me sales by region" → sql_query  
+     - "List the top 10 complaints by category" → sql_query  
+     - "What columns are available in the orders table?" → sql_query  
+
+2. small_talk  
+   - The user is greeting you, thanking you, or asking about your abilities or personality.  
+   - Examples:  
+     - "Hello" → small_talk  
+     - "Thanks for your help" → small_talk  
+     - "What can you do?" → small_talk  
+
+3. clarification_needed  
+   - The user's request is ambiguous, incomplete, or does not have enough detail to safely generate an SQL query.  
+   - Examples:  
+     - "Show me the results" (without specifying table/columns) → clarification_needed  
+     - "Compare last year to now" (without context) → clarification_needed  
+
+Rules:
+- Always choose one of these three labels.  
+- Do not include explanations, punctuation, or rephrasing.  
+- Output must be **exactly one word**:  
+  - sql_query  
+  - small_talk  
+  - clarification_needed
+
 """
 
 SMALL_TALK_PROMPT="""

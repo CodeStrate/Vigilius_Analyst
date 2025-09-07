@@ -1,14 +1,7 @@
-import yaml
 import streamlit as st
 import pandas as pd
 from typing import List
-from dotenv import load_dotenv
 from langchain_community.utilities import SQLDatabase
-load_dotenv()
-
-def load_config():
-    with open("config.yaml", "r") as f:
-        return yaml.safe_load(f)
 
 
 def get_last_user_message(messages: List) -> str:
@@ -46,6 +39,3 @@ def get_dataframe(uploaded_file):
             return file_types[file_extension](uploaded_file)
         else:
             st.error("Unsupported file type. Please upload a CSV or Excel file.")
-
-def get_timestamp():
-    return pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
