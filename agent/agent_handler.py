@@ -2,21 +2,23 @@ from langchain_core.messages import AIMessage
 from typing import List, Literal
 from langgraph.graph import END, START, MessagesState, StateGraph
 from langgraph.prebuilt import ToolNode
-from agent.data_assistant_handler import respond, validate_intent
+from langgraph.checkpoint.memory import InMemorySaver
 
+# Imports for SQL Agent
 from uuid import uuid4
 from langchain_community.agent_toolkits import SQLDatabaseToolkit
 from langchain_community.utilities import SQLDatabase
-from langchain_openai import ChatOpenAI
 from utils.app_utils import get_db_and_dialect
 # from utils.misc_utils import get_chinook_db_and_dialect
 from utils.misc_utils import get_last_user_message
 from agent.prompts import GENERATE_SQL_QUERY_PROMPT, CHECK_SQL_QUERY_PROMPT
+from agent.data_assistant_handler import DataAssistant
 
 class SQLAgentHandler:
 
-    def __init__(self, db: SQLDatabase, dialect: str = "sqlite", model_name: str = "gpt-4o", temperature: float = 0.5, top_k: int = 10):
-        self.llm = ChatOpenAI(model=model_name, temperature=temperature)
+    def __init__(self, db: SQLDatabase, llm, data_assistant: DataAssistant, dialect: str = "sqlite", top_k: int = 10):
+        self.llm = llm
+        self.data_assistant = data_assistant
         self.top_k = top_k
         self.db = db
         self.dialect = dialect
@@ -121,9 +123,10 @@ class SQLAgentHandler:
         return [get_schema_node, run_query_node]
 
     def intent_classify(self, state: MessagesState):
+
         user_message = get_last_user_message(state["messages"])
-        raw_intent = respond(user_message, do_intent=True)
-        intent_validation = validate_intent(raw_intent)
+        raw_intent = self.data_assistant.respond(user_message, do_intent=True)
+        intent_validation = self.data_assistant.validate_intent(raw_intent)
 
         intent_message = AIMessage(content=f'Intent classified as {intent_validation}')
         return {"messages" : [intent_message]}
@@ -138,7 +141,7 @@ class SQLAgentHandler:
                 intent = msg.content.split(": ")[1]
                 break
         
-        response_content = respond(user_message, current_intent=intent or "small_talk", do_intent=False)
+        response_content = self.data_assistant.respond(user_message, current_intent=intent or "small_talk", do_intent=False)
         response = AIMessage(content=response_content)
         
         return {"messages": [response]}
@@ -166,9 +169,12 @@ class SQLAgentHandler:
             return "check_query"
 
 class SQLAgent:
-    def __init__(self, db_path: str):
+    def __init__(self, db_path: str, llm=None, data_assistant=None):
         self.db, self.dialect = get_db_and_dialect(db_path=db_path)
-        self.handler = SQLAgentHandler(db=self.db, dialect=self.dialect)
+        self.llm = llm
+        self.data_assistant = data_assistant
+        self.handler = SQLAgentHandler(db=self.db, llm=self.llm, data_assistant=self.data_assistant, dialect=self.dialect)
+        self.checkpointer = InMemorySaver()
 
     def build_agent(self):
         tool_nodes = self.handler.get_schema_and_query_tool_nodes()
@@ -215,9 +221,9 @@ class SQLAgent:
         builder.add_edge("check_query","run_query")
         builder.add_edge("run_query", "generate_query")
 
-        agent = builder.compile()
+        self.agent = builder.compile(checkpointer=self.checkpointer)
 
-        return agent
+        return self.agent
 
     def save_agent_graph(self, save_path="agent_graph.png"):
         graph_image_rawbytes = self.agent.get_graph().draw_mermaid_png()

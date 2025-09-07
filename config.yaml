@@ -1,2 +1,0 @@
-chat_sessions_database_path: "./chat_sessions/chat_sessions.db"
-ollama_model: "nemotron-mini:latest" # add your ollama model here!

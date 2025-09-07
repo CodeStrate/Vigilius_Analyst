@@ -4,6 +4,9 @@ langchain-core
 langgraph
 langchain-community
 langchain-openai
+langchain-ollama
+langchain-groq
+langchain-google-genai
 sqlalchemy
 pandas
 numpy
