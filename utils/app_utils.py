@@ -2,6 +2,7 @@ from sqlalchemy import create_engine
 import pandas as pd
 import time, os
 import tempfile
+from langchain_community.utilities import SQLDatabase
 import streamlit as st
 from utils.misc_utils import get_dataframe, get_timestamp
 import plotly.express as px
@@ -16,12 +17,6 @@ def clear_cache():
     st.cache_resource.clear()
     st.session_state.clear()
 
-
-def save_dataframe_to_sqlite(df, table_name, db_path):
-    """Save DataFrame to SQLite."""
-    engine = create_engine(f"sqlite:///{db_path}")
-    df.to_sql(table_name, engine, if_exists='replace', index=False)
-
 def handle_dataset_upload(uploaded_dataset):
     if uploaded_dataset is not None and not st.session_state.dataset_uploaded:
         with st.spinner("Processing your dataset..."):
@@ -33,6 +28,16 @@ def handle_dataset_upload(uploaded_dataset):
             os.makedirs(os.path.dirname(db_path), exist_ok=True)
 
             save_dataframe_to_sqlite(dataset, table_name, db_path)
+
+def save_dataframe_to_sqlite(df, table_name, db_path):
+    """Save DataFrame to SQLite."""
+    engine = create_engine(f"sqlite:///{db_path}")
+    df.to_sql(table_name, engine, if_exists='replace', index=False)
+
+def get_db_and_dialect(db_path) -> tuple[SQLDatabase, str]:
+    db = SQLDatabase.from_uri(f"sqlite:///{db_path}")
+    return db, db.dialect
+
             
 def auto_generate_chart(df: pd.DataFrame):
     """Auto-generate a bar chart based on DataFrame structure."""
