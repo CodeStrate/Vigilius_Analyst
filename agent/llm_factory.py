@@ -15,7 +15,7 @@ class LLMFactory:
         # provider -> class, their any special kwargs
         self.__provider_map = {
             "openai" : (ChatOpenAI, {}),
-            "gemini" : (ChatGoogleGenerativeAI, {"google_api_key" : os.getenv("GEMINI_API_KEY"), "disable_streaming" : not streaming}),
+            "gemini" : (ChatGoogleGenerativeAI, {"google_api_key" : os.getenv("GOOGLE_API_KEY"), "disable_streaming" : not streaming}),
             "groq" : (ChatGroq, {}),
             "ollama" : (ChatOllama, {"stream" : streaming, "num_predict" : 360}), # we can add num_predict, max_tokens, etc params if needed
         }
